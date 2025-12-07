@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>要約アプリ（フロントエンド完結）</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 30px auto; }
+    textarea, input { width: 100%; padding: 8px; margin-top: 8px; }
+    button { padding: 10px 20px; margin-top: 10px; }
+    #result { margin-top: 20px; white-space: pre-wrap; }
+  </style>
+</head>
+
+<body>
+  <h1>要約アプリ</h1>
+
+  <label>OpenAI API Key</label>
+  <input id="apikey" type="password" placeholder="sk-..." />
+
+  <button id="testBtn">API をテストする</button>
+  <button id="summarizeBtn">要約する（クリップボード取得）</button>
+
+  <div id="result"></div>
+
+  <!-- OpenAI SDK (browser用) -->
+  <script type="module">
+    import OpenAI from "https://cdn.jsdelivr.net/npm/openai@4.58.2/+esm";
+
+    const apikeyInput = document.getElementById("apikey");
+    const resultEl = document.getElementById("result");
+
+    // 共通: Chat Completion リクエストを実行
+    async function callAPI(prompt) {
+      const key = apikeyInput.value.trim();
+      if (!key) {
+        alert("API Key を入力してください。");
+        return;
+      }
+
+      resultEl.textContent = "waiting...";
+
+      const client = new OpenAI({ apiKey: key, dangerouslyAllowBrowser: true });
+
+      try {
+        const response = await client.chat.completions.create({
+          model: "gpt-4o",
+          messages: [{ role: "user", content: prompt }],
+        });
+
+        const text = response.choices[0].message.content;
+        resultEl.textContent = text;
+      } catch (e) {
+        resultEl.textContent = "エラー: " + e.message;
+      }
+    }
+
+    // ■ API をテストする
+    document.getElementById("testBtn").onclick = async () => {
+      callAPI("こんにちは");
+    };
+
+    // ■ 要約する（クリップボードの内容 + 「要約して」）
+    document.getElementById("summarizeBtn").onclick = async () => {
+      try {
+        const clip = await navigator.clipboard.readText();
+        if (!clip) {
+          alert("クリップボードが空です。");
+          return;
+        }
+
+        const prompt = clip + "\n\n要約を日本語で答えて。";
+        callAPI(prompt);
+
+      } catch (e) {
+        alert("クリップボードの読み取りに失敗しました: " + e.message);
+      }
+    };
+  </script>
+</body>
+</html>
